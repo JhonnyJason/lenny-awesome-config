@@ -55,9 +55,6 @@ editAwesomeConfig = "code -n .config/awesome/" -- obviously cwd is ~ when spawni
 
 -- Default modkey.
 -- Usually, Mod4 is the key with a logo between Control and Alt.
--- If you do not like this or do not have such a key,
--- I suggest you to remap Mod4 to another key using xmodmap or other tools.
--- However, you can use another modifier like Mod1, but it may interact with others.
 modkey = "Mod4"
 
 -- Table of layouts to cover with awful.layout.inc, order matters.
@@ -71,50 +68,58 @@ awful.layout.layouts =
     awful.layout.suit.fair.horizontal,
     awful.layout.suit.floating
 }
--- }}}
 
--- {{{ Menu
--- Create a laucher widget and a main menu
---myawesomemenu = {
---   { "manual", terminal .. " -e man awesome" },
---   { "edit config", editor_cmd .. " " .. awesome.conffile },
---   { "restart", awesome.restart },
---   { "quit", awesome.quit }
---}
-
---mymainmenu = awful.menu({ items = { { "awesome", myawesomemenu, beautiful.awesome_icon },
---                                    { "open terminal", terminal }
---                                 }
---                        })
-
---mylauncher = awful.widget.launcher({ image = beautiful.awesome_icon,
---                                     menu = mymainmenu })
-
--- Menubar configuration - menubar is the app launcher - certain commands are directly executed
--- within a terminal - so we give it a valid terminal to use
 menubar.utils.terminal = terminal -- Set the terminal for applications that require it
--- }}}
 
--- a default keyboardlayout
--- mykeyboardlayout = awful.widget.keyboardlayout()
-
---{{{ Execztion on startup
---TODO: read programs for startup
---do
---  local cmds = 
---  { 
---    "xmodmap .Xmodmap"
---	--other programs
---  }
---
---  for _,i in pairs(cmds) do
---    awful.util.spawn(i)
---  end
---end
 awful.spawn(terminal)
 awful.spawn(terminal)
 awful.spawn.with_shell(screenAdjust)
---}}}
+
+
+
+
+
+
+screenSpawningRule = { 
+    rule = { }, 
+    properties = { 
+        maximized = false,
+        screen = 1,
+        floating = false,
+        focus = true
+    } 
+}
+
+local function adjustScreenSpawningRule(screenIndex)
+    if type(screenIndex) ~= "number" then
+        -- naughty.notify({ preset = naughty.config.presets.normal,
+        -- title = "FYI",
+        -- text = "We noticed this is not a number!"})
+        return
+    end
+    -- naughty.notify({ preset = naughty.config.presets.normal,
+    -- title = "FYI",
+    -- text = "I set the screenSpawningRule to have screen: " .. tostring(screenIndex)})
+
+    screenSpawningRule.properties.screen = screenIndex
+end
+
+local function assertMouseIsInFocusedScreen(c)
+
+    -- naughty.notify({ preset = naughty.config.presets.normal,
+    -- title = "FYI",
+    -- text = "mouse is in: " .. mouse.screen.index .. " and focus is on: " .. c.screen.index})
+
+    if mouse.screen.index == c.screen.index then return end
+
+    -- naughty.notify({ preset = naughty.config.presets.normal,
+    -- title = "FYI",
+    -- text = "We should use the force!"})
+
+    -- use the force sloppily to make mouse move on that screen
+    awful.screen.focus(c.screen)
+end
+
 -- {{{ All Wiboxes
 ---------------------------------------------------------------------------------------------
 
@@ -200,9 +205,6 @@ awful.screen.connect_for_each_screen(
     --give every screen it's own tag "table"
     awful.tag({ "1", "2", "3", "4", "5", "6", "7", "8", "9" }, s, awful.layout.layouts[1])
     
-    --probptbox for each screen
-    s.screenPromptbox = awful.widget.prompt()
-
     --layoutbox every screen has it's own current layout - layoutbox is indicating the current layout
     s.screenLayoutbox = awful.widget.layoutbox(s)
     s.screenLayoutbox:buttons(
@@ -273,19 +275,11 @@ awful.screen.connect_for_each_screen(
   end
 )
 
--- {{{ Mouse bindings no need for them now :-)
---root.buttons(awful.util.table.join(
---    awful.button({ }, 3, function ()  end),
---    awful.button({ }, 4, function () end),
---    awful.button({ }, 5, function () end)
---))
--- }}}
 
 -- {{{ Key bindings
 globalkeys = awful.util.table.join(
     awful.key({ modkey,           }, "Left",   awful.tag.viewprev       ),
     awful.key({ modkey,           }, "Right",  awful.tag.viewnext       ),
-    awful.key({ modkey,           }, "Escape", awful.tag.history.restore),
 
     -- navigation
 	awful.key({ modkey,           }, "w",
@@ -300,14 +294,6 @@ globalkeys = awful.util.table.join(
         end),
     awful.key({ modkey,			  }, "a", function () awful.screen.focus_relative( 1) end),
     awful.key({ modkey,			  }, "d", function () awful.screen.focus_relative(-1) end),
-    awful.key({ modkey,           }, "Tab", -- what does that do???
-        function ()
-            awful.client.focus.history.previous()
-            if client.focus then
-                client.focus:raise()
-            end
-        end),
-	awful.key({ modkey,           }, "u", awful.client.urgent.jumpto),
     
     -- Layout manipulation
     awful.key({ modkey, "Shift"   }, "j", function () awful.client.swap.byidx(  1)    end),
@@ -315,20 +301,23 @@ globalkeys = awful.util.table.join(
     
     -- Standard program
     awful.key({ modkey,           }, "t", 
-      function () 
+      function ()
+        adjustScreenSpawningRule(mouse.screen.index)
         awful.spawn(terminal) 
       end
     ),
-    awful.key({ modkey,           }, "Pause", 
+    awful.key({ modkey,           }, "´", 
       function () 
-        naughty.notify({ preset = naughty.config.presets.normal,
-                         title = "FYI",
-                         text = "Pause key did work!" })
+        -- TODO write this functionality on another key...^^
+        -- naughty.notify({ preset = naughty.config.presets.normal,
+        --                  title = "FYI",
+        --                  text = "Pause key did work!" })
         awful.spawn.with_shell(screenAdjust) 
       end
     ),
     awful.key({ modkey,           }, "#", 
       function ()
+        adjustScreenSpawningRule(mouse.screen.index)
         awful.spawn.with_shell(editAwesomeConfig) 
       end
     ),
@@ -346,18 +335,12 @@ globalkeys = awful.util.table.join(
 
     awful.key({ modkey, "Control" }, "n", awful.client.restore),
 
-    -- Prompt
-    awful.key({ modkey },            "r",     function () mouse.screen.screenPromptbox:run() end),
-
-    awful.key({ modkey }, "x",
-              function ()
-                  awful.prompt.run({ prompt = "Run Lua code: " },
-                  mouse.screen.screenPromptbox.widget,
-                  awful.util.eval, nil,
-                  awful.util.getdir("cache") .. "/history_eval")
-              end),
     -- Menubar
-    awful.key({ modkey }, "p", function() menubar.show() end),
+    awful.key({ modkey }, "p", 
+        function() 
+            adjustScreenSpawningRule(mouse.screen.index)
+            menubar.show() 
+        end),
 	
   	-- show/hide all wiboxes
   	awful.key({ modkey}, "v",
@@ -414,11 +397,6 @@ clientkeys = awful.util.table.join(
             -- minimized, since minimized clients can't have the focus.
             c.minimized = true
         end)--, 
---awful.key({ modkey,           }, "m",
---        function (c)
---            c.maximized_horizontal = not c.maximized_horizontal
---            c.maximized_vertical   = not c.maximized_vertical
---        end)
 )
 
 -- Bind all key numbers to tags.
@@ -471,40 +449,6 @@ clientbuttons = awful.util.table.join(
 -- Set keys
 root.keys(globalkeys)
 -- }}}
-
-
-screenSpawningRule = { 
-    rule = { }, 
-    properties = { 
-        screen = 1,
-        floating = false,
-        focus = true
-    } 
-}
-
-local function adjustScreenSpawningRule(screenIndex)
-
-    naughty.notify({ preset = naughty.config.presets.normal,
-    title = "FYI",
-    text = "I set the screenSpawningRule to have screen: " .. screenIndex})
-
-    screenSpawningRule.properties.screen = screenIndex
-end
-
-local function assertMouseIsInFocusedScreen(c)
-
-    naughty.notify({ preset = naughty.config.presets.normal,
-    title = "FYI",
-    text = "mouse is in: " .. mouse.screen.index .. " and focus is on: " .. c.screen.index})
-
-    if mouse.screen.index == c.screen.index then return end
-
-    naughty.notify({ preset = naughty.config.presets.normal,
-    title = "FYI",
-    text = "We should use the force!"})
-
-    --- TODO use force to get mouse on screenIndex ;-)
-end
 
 
 -- {{{ Rules
@@ -588,6 +532,48 @@ client.connect_signal("manage", function (c, startup)
     end
 end)
 
+-- awful.tag.connect_signal("request::select", function(s)
+
+--     naughty.notify({ preset = naughty.config.presets.normal,
+--     title = "FYI",
+--     text = "I have been called"})
+
+-- end)
+
+-- client.connect_signal("property::screen", function(s)
+
+--     naughty.notify({ preset = naughty.config.presets.normal,
+--     title = "FYI",
+--     text = "I have been called, screen property fo client Changed!"})
+
+-- end)
+
+-- screen.connect_signal("focus", function(s)
+
+--     naughty.notify({ preset = naughty.config.presets.normal,
+--     title = "FYI",
+--     text = "I have been called - screen focus signal!"})
+
+-- end)
+-- client.connect_signal("mouse::enter", function(c) adjustScreenSpawningRule(c.screen.index); end)
 client.connect_signal("focus", function(c) c.border_color = beautiful.border_focus; adjustScreenSpawningRule(c.screen.index); assertMouseIsInFocusedScreen(c) end)
 client.connect_signal("unfocus", function(c) c.border_color = beautiful.border_normal end)
 -- }}}
+
+
+-- monkey path to do some magic ;-)
+local original_focus = awful.screen.focus
+awful.screen.focus = function(leScreen)
+    
+    original_focus(leScreen)
+    
+    adjustScreenSpawningRule(leScreen)
+    
+    -- naughty.notify({ preset = naughty.config.presets.normal,
+    -- title = "FYI",
+    -- text = "We used the monkey magic!"})
+
+    -- unfocus the the client when he is not in the current screen.
+    -- todo    
+
+end
