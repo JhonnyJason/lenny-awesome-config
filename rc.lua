@@ -85,7 +85,6 @@ screenSpawningRule = {
     properties = { 
         maximized = false,
         screen = 1,
-        floating = false,
         focus = true
     } 
 }
